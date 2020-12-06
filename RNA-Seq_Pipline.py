@@ -3,68 +3,49 @@
 #YunChuan Wang
 #RNA-Seq Pipline
 ################################################################
-REP_INDEX = {"SRR1573513_GSM1502515_wtL-1","SRR1573513_GSM1502515_wtL-1"}
+
+SAMPLES = ['SRR4089365_PPDK_HL1_heter_1cm','SRR4089365_PPDK_HL1_heter_1cm',\
+'SRR4089401_PPDK_LL1_homo_4cm','SRR4089366_PPDK_HL1_heter_4cm',\
+'SRR4089404_PPDK_LL1_WT_1cm',\
+'SRR4089369_PPDK_HL2_heter_1cm','SRR4089405_PPDK_LL1_WT_4cm',\
+'SRR4089370_PPDK_HL2_heter_4cm','SRR4089408_PPDK_LL2_heter_1cm',\
+'SRR4089373_PPDK_HL2_homo_1cm','SRR4089409_PPDK_LL2_heter_4cm',\
+'SRR4089374_PPDK_HL2_homo_4cm','SRR4089410_PPDK_HL1_homo_4cm',\
+'SRR4089378_PPDK_HL2_WT_1cm','SRR4089413_PPDK_LL2_homo_1cm',\
+'SRR4089379_PPDK_HL2_WT_4cm','SRR4089414_PPDK_LL2_homo_4cm',\
+'SRR4089382_PPDK_HL3_heter_1cm','SRR4089417_PPDK_LL2_WT_1cm',\
+'SRR4089383_PPDK_HL3_heter_4cm','SRR4089418_PPDK_LL2_WT_4cm',\
+'SRR4089386_PPDK_HL3_homo_1cm','SRR4089422_PPDK_LL3_heter_1cm',\
+'SRR4089387_PPDK_HL3_homo_4cm','SRR4089423_PPDK_LL3_heter_4cm',\
+'SRR4089391_PPDK_HL3_WT_1cm','SRR4089426_PPDK_LL3_homo_1cm',\
+'SRR4089392_PPDK_HL3_WT_4cm','SRR4089427_PPDK_LL3_homo_4cm',\
+'SRR4089395_PPDK_LL1_heter_1cm','SRR4089430_PPDK_LL3_WT_1cm',\
+'SRR4089396_PPDK_LL1_heter_4cm','SRR4089431_PPDK_LL3_WT_4cm',\
+'SRR4089399_PPDK_HL1_homo_1cm','SRR4089435_PPDK_HL1_WT_1cm',\
+'SRR4089400_PPDK_LL1_homo_1cm','SRR4089436_PPDK_HL1_WT_4cm']
+
 
 rule all:
 	input:
-		expand("map/{rep}-B73-REFERENCE-GRAMENE-4.bam",rep = REP_INDEX),
-		expand("fpkm/{rep}_B73.csv",rep = REP_INDEX),
-		expand("count/{rep}_B73.txt",rep = REP_INDEX)
-
+		expand("map/{sample}.sam",sample = SAMPLES)
 
 rule trim:
 	input:
-		"{rep}_Zea_mays_RNA-Seq_1.fastq",
-		"{rep}_Zea_mays_RNA-Seq_2.fastq"
-		
+		"/media/amd/8tb/paper_Data/PPDK/{sample}.fastq"
 	output:
-		"cut/{rep}_R1_paired.fastq",
-		"cut/{rep}_R1_unpaired.fastq",
-		"cut/{rep}_R2_paired.fastq",
-		"cut/{rep}_R2_unpaired.fastq"
+		"cut/{sample}.fastq"
 	shell:
-		"java -jar /home/amd/Software/Trimmomatic-0.39/trimmomatic-0.39.jar PE -threads 30 \
-		{input[0]} {input[1]} {output[0]} {output[1]} {output[2]} {output[3]} \
-		ILLUMINACLIP:/home/amd/Software/Trimmomatic-0.39/adapters/TruSeq3-PE.fa:2:30:10 \
+		"java -jar /home/amd/Software/Trimmomatic-0.39/trimmomatic-0.39.jar SE -threads 60 \
+		{input} {output} \
+		ILLUMINACLIP:/home/amd/Software/Trimmomatic-0.39/adapters/TruSeq3-SE.fa:2:30:10 \
 		LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:30"
 
 rule mapping:
 	input:
-		"cut/{rep}_R1_paired.fastq",
-		"cut/{rep}_R2_paired.fastq"
+		"cut/{sample}.fastq"
 	output:
-		"map/{rep}.sam"
-	shell:
-		"gsnap -D /media/amd/8tb/Zea_may/Zea_v4/gmap_build/ -d maizev4 \
-		--nthreads=30 -B 5 -N 1 -n 1 -Q \
-		--nofails --format=sam \
-		{input[0]} {input[1]}> {output[0]}"
-
-rule bam_file_sort:
-	input:
-		"map/{rep}.sam"
-	output:
-		"map/{rep}-B73-REFERENCE-GRAMENE-4.bam"
+		"map/{sample}.sam"
 	log:
-		"map/{rep}-B73-REFERENCE-GRAMENE-4.log"
+		"log/{sample}-B73.log"
 	shell:
-		"samtools sort -O BAM -o {output} -T {log}.temp -@ 30 {input}"
-
-rule cal_count:
-	input:
-		"map/{rep}-B73-REFERENCE-GRAMENE-4.bam"
-	output:
-		"count/{rep}_B73.txt"
-	shell:
-		"htseq-count -f bam {input} \
-		/media/amd/8tb/Zea_may/Zea_v4/Zm-B73-REFERENCE-GRAMENE-4.0.gtf > {output}"
-
-rule cal_fpkm:
-	input:
-		"map/{rep}-B73-REFERENCE-GRAMENE-4.bam"
-	output:
-		"fpkm/{rep}_B73"
-	shell:
-		"cufflinks -p 32 -G\
-		/media/amd/8tb/Zea_may/Zea_v4/Zm-B73-REFERENCE-GRAMENE-4.0.gtf \
-		 {input} -o {output}"
+		"hisat2 -p 60 -x /media/amd/8tb/Zea_may_hisat2_Data/Zm_B73_v4 -U {input} -S {output}  &> {log}"

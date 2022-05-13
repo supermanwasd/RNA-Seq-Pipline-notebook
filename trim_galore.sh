@@ -1,4 +1,5 @@
 #!/bin/bash
+#bash trim_galore.sh
 ls partly_raw_data | grep "_R1_001" > gz1
 ls partly_raw_data | grep "_R2_001" > gz2
 paste gz1 gz2>config_file
